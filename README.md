@@ -30,7 +30,7 @@ if (!all(st_geometry_type(points_vector) == "POINT")) {
 }
 ```
 
-## Points counting at various radius from the origin sites
+## Points counting at different radius from the origin sites
 ```
 # Define the Euclidean distance threshold (1 km to 20 km)
 # Please change accordingly if other than Cartesian CRS is used 
@@ -56,4 +56,33 @@ origins_data <- left_join(origins_vector, counts_long, by = "ID")
 
 # Print the first few rows to check the result
 print(origins_data)
+```
+
+## Points counting at different radius and time from the origin sites
+Ensure that both origins vector and points vector have a time related feature of "Date" type. In this example, the time related feature is named as "date"
+```
+radii <-  seq(1000, 20000, by = 1000)
+mth_lead <- seq(-12, 12, by = 1) #create the month leads
+expanded_list <- expand.grid(id = origins_vector$id, radius = radii, 
+                             mth_lead = mth_lead)
+
+# Apply for loop for counting the points
+for (i in seq_len(nrow(expanded_list))){
+  selected_id <- expanded_list$id[i] 
+  selected_origin <- origins_vector[origins_vector$id == selected_id,]
+  radius <- expanded_list$radius[i]
+  selected_date <- origins_vector$date %m+% months(expanded_list$mth_lead[i])
+  filtered_points_vector <- points_vector %>%  
+    filter(month_year == selected_date[selected_id])
+  within_distance <- st_is_within_distance(selected_origin, 
+                                           filtered_points_vector, dist = radius)
+  counted <- lengths(within_distance)
+
+# Update the counts column in expanded_list
+expanded_list$counts[i] <- counted
+
+# For progress tracking
+percent <- round((i /nrow(expanded_list))*100, 2)
+print(paste(percent, "% done"))
+}
 ```
